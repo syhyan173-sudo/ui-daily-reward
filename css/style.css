@@ -1,0 +1,757 @@
+/* ==========================================================================
+   MINT Daily Reward System - GTA SAMP CEF Environment
+   Design Language: Minimalist, Clean, Light-Mode "MINT"
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+
+/* --- 1. GLOBAL DESIGN SYSTEM VARIABLES --- */
+:root {
+  --forest: #0A4A3A;         /* Primary: Buttons, Active borders, Text */
+  --forest-hover: #08382C;   /* Hover state */
+  --mint: #A3D9C9;           /* Accent: Claimed state, Badges, Progress bar */
+  --mint-light: rgba(163, 217, 201, 0.2); /* Badge/Icon backgrounds */
+  --ivory: #F7F7F7;          /* Main Modal Background */
+  --white: #FFFFFF;          /* Card Backgrounds */
+  --ink: #1E1E1E;            /* Dark Text */
+  --text-muted: #777777;     /* Gray Text */
+  --gray-border: #EAEAEA;    /* Inactive Borders */
+  --expired-red: #E74C3C;    /* Expired state text/icons */
+  --expired-bg: #FDEDEC;     /* Expired state background */
+  --expired-border: #FADBD8; /* Expired state border */
+}
+
+/* --- 2. BASE & RESET --- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ink);
+  min-height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  background-color: #0d1217;
+}
+
+/* --- 3. GTA SAMP CEF BACKGROUND SIMULATION --- */
+.game-viewport {
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(10, 74, 58, 0.35) 0%, transparent 60%),
+    radial-gradient(circle at 80% 80%, rgba(13, 25, 22, 0.75) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(5, 12, 10, 0.90) 0%, rgba(13, 18, 23, 0.82) 100%),
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)" /></svg>');
+  background-size: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Ambient CEF HUD watermark / status bar */
+.cef-game-hud {
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.5px;
+  z-index: 10;
+}
+
+.cef-game-hud .server-pill {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: var(--mint);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cef-game-hud .server-pill::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #2ECC71;
+  box-shadow: 0 0 6px #2ECC71;
+}
+
+/* Reopen button if closed */
+.reopen-prompt {
+  position: absolute;
+  bottom: 20px;
+  background: rgba(10, 74, 58, 0.85);
+  color: #FFFFFF;
+  border: 1px solid var(--mint);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  z-index: 20;
+}
+
+.reopen-prompt:hover {
+  background: var(--forest);
+  transform: translateY(-2px);
+}
+
+.reopen-prompt.visible {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- 4. MAIN MODAL CONTAINER (900px x 540px) --- */
+.modal-wrapper {
+  position: relative;
+  width: 900px;
+  height: 540px;
+  border-radius: 24px;
+  background-color: var(--ivory);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  display: flex;
+  overflow: hidden;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 30;
+}
+
+.modal-wrapper.hidden-modal {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95);
+}
+
+/* Close Button (X) */
+.modal-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 1px solid var(--gray-border);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  z-index: 40;
+}
+
+.modal-close-btn:hover {
+  color: var(--forest);
+  transform: rotate(90deg);
+  background: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* --- 5. LEFT PANEL (40% WIDTH - SHOWCASE & TIMER) --- */
+.panel-left {
+  width: 40%;
+  background-color: var(--white);
+  border-right: 1px solid var(--gray-border);
+  padding: 24px 24px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.panel-left-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: var(--mint-light);
+  color: var(--forest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--forest);
+  line-height: 1.1;
+}
+
+/* Car Showcase (Centered) */
+.showcase-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.car-svg-container {
+  width: 100%;
+  height: 115px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.car-svg {
+  width: 250px;
+  height: auto;
+  max-height: 110px;
+  filter: drop-shadow(0 6px 12px rgba(10, 74, 58, 0.12));
+}
+
+.legendary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  background-color: var(--mint-light);
+  color: var(--forest);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+
+.showcase-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+  margin-bottom: 6px;
+  white-space: pre-line;
+}
+
+.showcase-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  max-width: 280px;
+  margin-bottom: 12px;
+}
+
+.btn-not-active {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 240px;
+  padding: 9px 16px;
+  background-color: var(--ivory);
+  border: 1px dashed var(--gray-border);
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+/* Streak Section */
+.streak-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.streak-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.streak-title {
+  color: var(--ink);
+}
+
+.streak-count {
+  color: var(--forest);
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  background-color: var(--ivory);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--gray-border);
+}
+
+.progress-fill {
+  width: 14%;
+  height: 100%;
+  background-color: var(--forest);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+/* Countdown Timer */
+.countdown-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--ivory);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--gray-border);
+  margin-top: 10px;
+}
+
+.countdown-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.countdown-time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--forest);
+  background-color: var(--mint-light);
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+/* --- 6. RIGHT PANEL (60% WIDTH - REWARD CALENDAR) --- */
+.panel-right {
+  width: 60%;
+  padding: 30px 28px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.panel-right-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.header-accent-line {
+  width: 4px;
+  height: 22px;
+  background-color: var(--mint);
+  border-radius: 2px;
+}
+
+.calendar-heading {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--forest);
+}
+
+/* Grid: 3 columns x 2 rows */
+.reward-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* Base Card Style */
+.reward-card {
+  position: relative;
+  background-color: var(--white);
+  border: 1px solid var(--gray-border);
+  border-radius: 16px;
+  padding: 14px 10px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 148px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Card Top Corner Labels */
+.card-day-label {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.card-top-icon {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-icon-container {
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 18px 0 8px 0;
+  transition: transform 0.2s ease;
+}
+
+.card-icon-container svg {
+  width: 40px;
+  height: 40px;
+}
+
+.card-item-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+  line-height: 1.25;
+}
+
+/* --- Specific Card States --- */
+
+/* 1. EXPIRED STATE (Day 1) */
+.reward-card.state-expired {
+  background-color: var(--expired-bg);
+  border-color: var(--expired-border);
+  cursor: pointer;
+}
+
+.reward-card.state-expired .card-day-label {
+  color: var(--expired-red);
+}
+
+.reward-card.state-expired .card-icon-container {
+  color: var(--expired-red);
+  opacity: 0.5;
+}
+
+.reward-card.state-expired .card-item-name {
+  text-decoration: line-through;
+  color: var(--expired-red);
+  opacity: 0.85;
+}
+
+.badge-expired {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--expired-red);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background-color: rgba(231, 76, 60, 0.12);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 2. ACTIVE STATE (Day 2) */
+.reward-card.state-active {
+  border: 2px solid var(--forest);
+  box-shadow: 0 8px 20px rgba(10, 74, 58, 0.15);
+  transform: scale(1.03);
+  z-index: 2;
+  background-color: var(--white);
+}
+
+.reward-card.state-active:hover {
+  transform: scale(1.05);
+}
+
+.btn-claim {
+  background-color: var(--forest);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 82%;
+  box-shadow: 0 2px 6px rgba(10, 74, 58, 0.25);
+}
+
+.btn-claim:hover {
+  background-color: var(--forest-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(10, 74, 58, 0.35);
+}
+
+.btn-claim:active {
+  transform: translateY(0);
+}
+
+/* CLAIMED STATE (After User clicks Claim) */
+.reward-card.state-claimed {
+  border: 2px solid var(--mint) !important;
+  background-color: var(--mint-light) !important;
+  transform: scale(1) !important;
+  box-shadow: 0 4px 10px rgba(10, 74, 58, 0.08) !important;
+}
+
+.badge-claimed {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--forest);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background-color: rgba(10, 74, 58, 0.12);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 3. LOCKED STATE (Days 3-6) */
+.reward-card.state-locked {
+  opacity: 0.6;
+  border: 1px dashed var(--gray-border);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+.reward-card.state-locked .card-item-name {
+  color: var(--text-muted);
+}
+
+.badge-locked {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background-color: var(--ivory);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Day 7 Final Banner */
+.day7-banner {
+  display: flex;
+  align-items: center;
+  background-color: var(--white);
+  border: 1px solid var(--gray-border);
+  border-radius: 16px;
+  padding: 12px 18px;
+  margin-top: auto;
+  gap: 14px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+.day7-banner:hover {
+  border-color: var(--mint);
+  transform: translateY(-1px);
+}
+
+.day7-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background-color: var(--mint-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #D4AF37;
+}
+
+.day7-text-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.day7-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--forest);
+  letter-spacing: 0.5px;
+}
+
+.day7-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.day7-arrow {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.day7-banner:hover .day7-arrow {
+  transform: translateX(3px);
+  color: var(--forest);
+}
+
+/* Shake Animation for Expired Card */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* --- 7. POPUP MODALS (SUCCESS & ERROR) --- */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 100;
+}
+
+.popup-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.popup-card {
+  background-color: var(--ivory);
+  border-radius: 24px;
+  padding: 32px 28px;
+  width: 380px;
+  max-width: 90vw;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: scale(0.92);
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.popup-overlay.show .popup-card {
+  transform: scale(1);
+}
+
+.popup-icon-circle {
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.popup-icon-circle.success {
+  background-color: var(--mint-light);
+  color: var(--forest);
+}
+
+.popup-icon-circle.error {
+  background-color: var(--expired-bg);
+  color: var(--expired-red);
+}
+
+.popup-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.popup-title.success {
+  color: var(--forest);
+}
+
+.popup-title.error {
+  color: var(--expired-red);
+}
+
+.popup-message {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.popup-btn {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 14px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: #FFFFFF;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+
+.popup-btn.btn-success {
+  background-color: var(--forest);
+}
+
+.popup-btn.btn-success:hover {
+  background-color: var(--forest-hover);
+  transform: translateY(-1px);
+}
+
+.popup-btn.btn-error {
+  background-color: var(--expired-red);
+}
+
+.popup-btn.btn-error:hover {
+  background-color: #c0392b;
+  transform: translateY(-1px);
+}

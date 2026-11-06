@@ -1,0 +1,6 @@
+{
+  "name": "MINT Daily Reward System",
+  "description": "Production-ready GTA SAMP CEF Daily Reward modal featuring the MINT System design language, split-screen showcase, reward calendar grid, streak tracking, countdown timer, and claim modals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
